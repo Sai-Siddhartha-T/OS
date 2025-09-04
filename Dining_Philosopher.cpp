@@ -1,62 +1,46 @@
- #include <iostream>
+#include <iostream>
 #include <thread>
-#include <vector>
-#include <semaphore.h>   // POSIX semaphores
-#include <unistd.h>      // sleep function
-
+#include <semaphore.h>
 using namespace std;
 
-#define N 5
+sem_t chop[5];   // 5 chopsticks
+sem_t room;      // semaphore to avoid deadlock
 
-sem_t chopstick[N];   // One semaphore per chopstick
-sem_t room;           // Semaphore to prevent deadlock (max N-1 philosophers)
+void eat(int i) {
+    sem_wait(&room);                 // enter dining room (only 4 allowed)
+    sem_wait(&chop[i]);              // pick left chopstick
+    sem_wait(&chop[(i+1)%5]);        // pick right chopstick
 
-void philosopher(int id) {
-    while (true) {
-        cout << "Philosopher " << id << " is thinking...\n";
-        sleep(1);  // Thinking for 1 second
+    cout << "\n Philosopher " << i << " is eating" ;
 
-        sem_wait(&room);           // Enter room (limit to N-1 philosophers)
-        sem_wait(&chopstick[id]);  // Pick up left chopstick
-        sem_wait(&chopstick[(id + 1) % N]); // Pick up right chopstick
-
-        cout << "Philosopher " << id << " is eating...\n";
-        sleep(2);  // Eating for 2 seconds
-
-        sem_post(&chopstick[id]);          // Put down left chopstick
-        sem_post(&chopstick[(id + 1) % N]); // Put down right chopstick
-        sem_post(&room);                    // Leave room
-
-        cout << "Philosopher " << id << " finished eating.\n";
-    }
+    sem_post(&chop[(i+1)%5]);        // put down right chopstick
+    sem_post(&chop[i]);              // put down left chopstick
+    sem_post(&room);                 // leave room
 }
 
 int main() {
-    vector<thread> threads;
+    thread philosophers[5];          // array of 5 threads
 
-    // Initialize chopstick semaphores to 1
-    for (int i = 0; i < N; i++) {
-        sem_init(&chopstick[i], 0, 1);
+    sem_init(&room, 0, 4);           // allow 4 philosophers at once
+    for (int i = 0; i < 5; i++) {
+        sem_init(&chop[i], 0, 1);    // each chopstick available
     }
 
-    // Initialize room semaphore to N-1
-    sem_init(&room, 0, N-1);
-
-    // Create philosopher threads
-    for (int i = 0; i < N; i++) {
-        threads.push_back(thread(philosopher, i));
+    // create philosopher threads
+    for (int i = 0; i < 5; i++) {
+        philosophers[i] = thread(eat, i);
     }
 
-    // Join threads
-    for (auto& th : threads) {
-        th.join();
+    // wait for all philosophers to finish
+    for (int i = 0; i < 5; i++) {
+        philosophers[i].join();
     }
 
-    // Destroy semaphores (optional, not reached here)
-    for (int i = 0; i < N; i++) {
-        sem_destroy(&chopstick[i]);
-    }
+    // cleanup semaphores
     sem_destroy(&room);
+    for (int i = 0; i < 5; i++) {
+        sem_destroy(&chop[i]);
+    }
 
     return 0;
 }
