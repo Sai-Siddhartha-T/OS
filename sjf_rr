@@ -1,0 +1,41 @@
+#include <stdio.h>
+
+struct P {int id,at,bt,rt,ct,tat,wt;};
+
+void sjf(struct P p[],int n){
+ int t=0,done=0,i,min,idx; float tw=0,tt=0;
+ while(done<n){
+  idx=-1; min=9999;
+  for(i=0;i<n;i++)
+   if(p[i].at<=t && p[i].rt>0 && p[i].rt<min){min=p[i].rt; idx=i;}
+  if(idx==-1){t++; continue;}
+  p[idx].rt--; t++;
+  if(p[idx].rt==0){done++; p[idx].ct=t; p[idx].tat=t-p[idx].at; p[idx].wt=p[idx].tat-p[idx].bt; tw+=p[idx].wt; tt+=p[idx].tat;}
+ }
+ printf("\nSJF Preemptive\nID AT BT CT TAT WT\n");
+ for(i=0;i<n;i++) printf("%d %2d %2d %2d %2d %2d\n",p[i].id,p[i].at,p[i].bt,p[i].ct,p[i].tat,p[i].wt);
+ printf("Avg WT=%.2f TAT=%.2f\n",tw/n,tt/n);
+}
+
+void rr(struct P p[],int n,int q){
+ int t=0,done=0,i,run; float tw=0,tt=0;
+ while(done<n){
+  run=0;
+  for(i=0;i<n;i++) if(p[i].at<=t && p[i].rt>0){
+   run=1;
+   if(p[i].rt>q){p[i].rt-=q; t+=q;}
+   else{t+=p[i].rt; p[i].rt=0; p[i].ct=t; p[i].tat=t-p[i].at; p[i].wt=p[i].tat-p[i].bt; tw+=p[i].wt; tt+=p[i].tat; done++;}
+  } if(!run) t++;
+ }
+ printf("\nRound Robin (TQ=%d)\nID AT BT CT TAT WT\n",q);
+ for(i=0;i<n;i++) printf("%d %2d %2d %2d %2d %2d\n",p[i].id,p[i].at,p[i].bt,p[i].ct,p[i].tat,p[i].wt);
+ printf("Avg WT=%.2f TAT=%.2f\n",tw/n,tt/n);
+}
+
+int main(){
+ int n,q,i; printf("Enter n: "); scanf("%d",&n);
+ struct P p[n];
+ for(i=0;i<n;i++){p[i].id=i+1; printf("AT BT for P%d: ",i+1); scanf("%d%d",&p[i].at,&p[i].bt); p[i].rt=p[i].bt;}
+ printf("Time Quantum: "); scanf("%d",&q);
+ sjf(p,n); for(i=0;i<n;i++) p[i].rt=p[i].bt; rr(p,n,q);
+}
